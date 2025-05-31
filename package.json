@@ -1,6 +1,6 @@
 {
   "name": "access-routing",
-  "version": "2.0.4",
+  "version": "2.0.9",
   "license": "MIT",
   "type": "module",
   "main": "dist/access-routing.umd.js",
@@ -13,6 +13,17 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "keywords": [
+    "react",
+    "routing",
+    "access control",
+    "protected routes",
+    "typescript",
+    "authentication",
+    "react-router-dom",
+    "react-router",
+    "private"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/SAmir1374/access-routing.git"

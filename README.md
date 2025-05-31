@@ -1,109 +1,135 @@
-# Access Router
+## 📦 `access-routing`
 
-A lightweight and flexible routing and access-control layer for React applications. This module allows you to define your routes and restrict access based on user roles and group roles.
+`access-routing` is a **lightweight** and **TypeScript-compatible** routing utility designed for React applications. It provides a clean and modular way to handle **access control**, **authentication**, and **protected routes**.
+
+### 🧩 Key Capabilities
+
+- Define access roles for routes using simple configuration
+- Seamlessly supports both **private** and **public** routes
+- Automatically handles **authentication checks**
+- Easily integrates with your app using TypeScript and `react-router-dom`
+- Share allowed routes through React context for dynamic rendering
+
+> Ideal for apps that need role-based routing logic with minimal boilerplate.
+
+## 📖 Usage
+
+To use `access-routing` in your React project, you need to wrap your app with the `AccessRouterProvider` component. This provider accepts a `config` prop where you can define:
+
+- The list of all available routes
+- The current user's roles
+- The group roles the user belongs to
+- The authentication token
+- The URL for the login page (redirect when the user is not authenticated)
 
 ---
 
-## ✨ Features
-
-- Supports public and protected routes
-- Role-based and group-role-based access control
-- Page preloading support
-- Auto-redirect to login or home page
-- NotFound page support
-- Fully TypeScript compatible
-
----
-
-## 🧩 Installation
-
-npm i access-routing
-
-yarn add access-routing
-
----
-
-## 🧾 Route Definition Type
-
-````ts
-import type { LazyExoticComponent, FC } from 'react';
-
-export interface RouteItemType {
-  path: string;
-  pageComponents: LazyExoticComponent<FC>;
-  pageTitle: string;
-  toolTipPage: string | null;
-  icon: React.ReactNode | null;
-  preLoadingFunc?: string;
-  isPublic: boolean;
-  roles: string[];
-  groupRoles: string[];
-}
+ ## RouteItemType  props
 
 
-## 🏗 Usage
+| Property        | Type                           | Description                                                                                      |
+|-----------------|--------------------------------|------------------------------------------------------------------------------------------------|
+| `path`          | `string`                       | The URL path of the route.                                                                       |
+| `pageComponents` | `LazyExoticComponent<FC>`      | The React component rendered for this route, supports lazy loading for performance optimization.|
+| `pageTitle`     | `string`                       | The title of the page, used for display or SEO purposes.                                        |
+| `toolTipPage`   | `string \| null`               | Tooltip text shown on the menu icon, providing additional info on hover.                        |
+| `icon`          | `React.ReactNode \| null`      | The icon component used in the navigation menu for this route.                                 |
+| `preLoadingFunc`| `string` (optional)            | Optional function to preload resources for this page to improve loading speed.                  |
+| `isPublic`      | `boolean`                      | Defines if the route is public (no authentication token required) or private.                    |
+| `roles`         | `string[]`                     | Array of user roles that are allowed to access this route.                                      |
+| `groupRoles`    | `string[]`                     | Array of group roles defining group-based access permissions for this route.                    |
 
 
-# AccessRouterProvider
 
-`AccessRouterProvider` is a wrapper component designed for route access control in React applications. It works with `react-router-dom` and integrates role-based access control, token authentication, and route sharing via a context provider (`ShareDataProvider`).
+### Example: `AccessRouterProvider` Component
 
-## ✨ Features
+```tsx
+import type { ReactNode } from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import type { RouteItemType } from '@/types/RouterType';
+import { ShareDataProvider } from '@/provider';
+import ProtectedRouter from './ProtectedRouter';
 
-- Supports user roles and group roles
-- Automatically redirects to the login page if the user is unauthorized
-- Provides allowed routes via context
-- Supports public routes
+type Props = {
+  children: ReactNode;
+  config: {
+    allRoutes?: RouteItemType[];
+    userRoles?: string[];
+    groupRole?: string[];
+    Loader?: React.ReactElement;
+    token?: string;
+    loginUrl?: string;
+  };
+};
 
-## 🔧 Props
+const AccessRouterProvider = ({
+  children,
+  config = {
+    allRoutes: [],
+    groupRole: [],
+    userRoles: [],
+    token: '',
+    loginUrl: '/login',
+  },
+}: Props) => {
+  return (
+    <BrowserRouter>
+      <ShareDataProvider
+        initialData={{
+          ...config,
+          allowedRoutes: ProtectedRouter(
+            config?.allRoutes ?? [],
+            config.userRoles ?? [],
+            config.groupRole ?? [],
+            config.token ?? ''
+          ),
+        }}
+      >
+        {children}
+      </ShareDataProvider>
+    </BrowserRouter>
+  );
+};
 
-### `AccessRouterProvider` Props
+export default AccessRouterProvider;
 
-| Prop Name | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `children` | `ReactNode` | ✅ | The child components that will have access to the routing context. |
-| `config.allRoutes` | `RouteItemType[]` | ❌ | An array of all possible routes in the app. |
-| `config.userRoles` | `string[]` | ❌ | A list of roles assigned to the current user. |
-| `config.groupRole` | `string[]` | ❌ | Group roles for categorizing users (e.g., department access). |
-| `config.token` | `string` | ❌ | Access token used to verify if the user is authenticated. |
-| `config.loginUrl` | `string` | ❌ | URL to redirect to if the user is not authenticated or authorized. |
-| `config.Loader` | `React.ReactElement` | ❌ | Optional custom loader while routes are being checked or loaded. |
+``` 
 
-### `RouteItemType` Structure
+```tsx
+import React, { lazy } from 'react';
+import AccessRouterProvider from './AccessRouterProvider';
+import type { RouteItemType } from '@/types/RouterType';
 
-```ts
-export interface RouteItemType {
-  path: string;
-  pageComponents: LazyExoticComponent<FC>;
-  pageTitle: string;
-  toolTipPage: string | null;
-  icon: React.ReactNode | null;
-  preLoadingFunc?: string;
-  isPublic: boolean;
-  roles: string[];
-  groupRoles: string[];
-}
+// Define lazy loaded pages
+const HomePage = lazy(() => import('./pages/HomePage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
 
-
-// App.tsx
-import { lazy } from 'react';
-import { AccessRouterProvider } from 'access-routing';
-import type { RouteItemType } from 'access-routing';
-
-const allRoutes: RouteItemType[] = [
+// Define routes array
+const routes: RouteItemType[] = [
+  {
+    path: '/',
+    pageComponents: HomePage,
+    pageTitle: 'Home',
+    toolTipPage: 'Go to Home',
+    icon: null,
+    isPublic: true,
+    roles: [],
+    groupRoles: [],
+  },
   {
     path: '/dashboard',
-    pageComponents: lazy(() => import('@/pages/Dashboard')),
+    pageComponents: DashboardPage,
     pageTitle: 'Dashboard',
-    toolTipPage: 'View dashboard',
+    toolTipPage: 'User Dashboard',
     icon: null,
     isPublic: false,
-    roles: ['admin'],
-    groupRoles: ['management'],
+    roles: ['admin', 'user'],
+    groupRoles: ['staff'],
   },
   {
     path: '/login',
-    pageComponents: lazy(() => import('@/pages/Login')),
+    pageComponents: LoginPage,
     pageTitle: 'Login',
     toolTipPage: null,
     icon: null,
@@ -113,258 +139,138 @@ const allRoutes: RouteItemType[] = [
   },
 ];
 
+// Usage example of AccessRouterProvider
 const App = () => {
+  const userRoles = ['user'];
+  const groupRoles = ['staff'];
+  const token = 'jwt-token-example';
+
   return (
     <AccessRouterProvider
       config={{
-        allRoutes,
-        userRoles: ['admin'],
-        groupRole: ['management'],
-        token: 'sample_token_123',
+        allRoutes: routes,
+        userRoles,
+        groupRole: groupRoles,
+        token,
         loginUrl: '/login',
       }}
     >
-      {/* App components go here */}
+      {/* Your app components */}
     </AccessRouterProvider>
   );
 };
 
 export default App;
+ ```
+ 
+ # `RootRouter` Component
 
+The `RootRouter` component is responsible for managing and rendering the allowed routes in your app based on the user's **authentication status** and **access roles**.
 
+---
 
-### 1. Wrap your app with `AccessRouterProvider` (usually in `main.tsx` or `App.tsx`)
+## 📦 Props
 
+| Name             | Type                        | Description                                                                                         |
+|------------------|-----------------------------|---------------------------------------------------------------------------------------------------|
+| `token`          | `string` (optional)          | The user's authentication token. If present, private routes become accessible.                    |
+| `Loader`         | `React.ReactElement` (optional) | A loading component displayed while lazy-loaded pages are being fetched (fallback UI).            |
+| `loginUrl`       | `string` (optional)          | URL of the login page, where unauthenticated users are redirected. Default is `/login`.           |
+| `NotFoundPage`   | `React.ComponentType` (optional) | Component rendered for unmatched routes (404 page).                                               |
+| `notFoundIsPublic` | `boolean` (optional)         | Defines whether the 404 page is public (accessible without authentication). If `true`, it's public.|
+
+---
+
+## 🛠️ Behavior
+
+- Uses the `useShareData` hook to get shared data like all routes, user roles, and group roles.
+- Calls `ProtectedRouter` to filter routes the user is allowed to access based on roles and token.
+- Manages a `routingStatus` state with possible values:
+  - `checking`: Currently verifying access (renders nothing during this state).
+  - `redirectToLogin`: Redirects to login page if user is not authenticated and tries to access a protected route.
+  - `redirectToHome`: Redirects authenticated users away from login page to the home page.
+  - `render`: Renders the allowed routes.
+
+---
+
+## 🔄 How to use
+
+Place the `RootRouter` inside your app, typically **below the provider** (`AccessRouterProvider`) that supplies the route and user role data. This component will dynamically generate and render your app's routes with proper access control and redirection.
 
 ```tsx
-import { AccessRouterProvider } from 'access-routing';
-import routes from '@/router/routes';
+import AccessRouterProvider from './AccessRouterProvider';
+import { RootRouter } from './RootRouter';
+import NotFoundPage from './pages/NotFoundPage';
 
-const userRoles = ['admin']; // Fetched from login/session
-const groupRole = ['team-leader']; // Fetched from login/session
-const token = 'user-token'; // Fetched from cookie or localStorage
-const loginUrl = '/login';
+function App() {
+  return (
+    <AccessRouterProvider config={{ /* your config here */ }}>
+      <RootRouter
+        token={userToken}
+        Loader={<LoadingSpinner />}
+        loginUrl="/login"
+        NotFoundPage={NotFoundPage}
+        notFoundIsPublic={true}
+      />
+    </AccessRouterProvider>
+  );
+}
 
-<AccessRouterProvider
-  config={{
-    allRoutes: routes,
-    userRoles,
-    groupRole,
-    token,
-    loginUrl,
-  }}
->
-  <App />
+```
+## Note on `token` Prop Usage
+
+Currently, you need to pass the `token` prop both to the `AccessRouterProvider` (or its config) **and** to the `RootRouter` component to ensure full authentication and access control flow.
+
+Although this might feel redundant and not very elegant, it is necessary for the current implementation to:
+
+- Allow the provider to determine accessible routes based on roles and token.
+- Let the router handle redirection and route rendering depending on authentication status.
+
+> **Rest assured:** In upcoming versions, this redundancy will be addressed and improved for a cleaner API and better developer experience.
+
+For now, please continue passing `token` to both layers as shown:
+
+```tsx
+<AccessRouterProvider config={{ token: userToken, /* other config */ }}>
+  <RootRouter token={userToken} /* other props */ />
 </AccessRouterProvider>
 
+```
 
-## 🖥 App.tsx Usage
 
-In your `App.tsx`, you need to use the `RootRouter` component to handle routing and access control.
+## Accessing Allowed Routes Anywhere in the Project
 
-Example:
+You can use the `useAccessRouting` hook to get the list of allowed routes anywhere in your React app. This is useful, for example, when you want to build dynamic menus based on the user's access permissions.
+
+### How to use `useAccessRouting`
 
 ```tsx
-import React from 'react';
-import { RootRouter } from 'access-routing';
-import { useShareData } from '@/provider';
+import { useAccessRouting } from 'access-routing'; // or your correct path
 
-const App = () => {
-  const { state } = useShareData();
-
-  return (
-    <RootRouter
-      token={state.token}
-      loginUrl="/login"
-      Loader={<div>Loading...</div>}
-      NotFoundPage={() => <div>404 Page Not Found</div>}
-      notFoundIsPublic={false}
-    />
-  );
-};
-
-export default App;
-
-
-````
-
-### RootRouter Props
-
-| Prop Name          | Type                  | Description                                                                                 | Default     |
-| ------------------ | --------------------- | ------------------------------------------------------------------------------------------- | ----------- |
-| `token`            | `string`              | Authentication token, used to check if user is logged in.                                   | `''`        |
-| `loginUrl`         | `string`              | URL path to the login page. Redirects to this when user is unauthorized.                    | `'/login'`  |
-| `Loader`           | `React.ReactElement`  | React element shown while lazy-loaded components or routes are loading.                     | `<div />`   |
-| `NotFoundPage`     | `React.ComponentType` | Component rendered when no matching route is found (404).                                   | `undefined` |
-| `notFoundIsPublic` | `boolean`             | If `true`, 404 page is accessible without login; otherwise, redirects to login if no token. | `false`     |
-
-### Accessing Allowed Routes with `useAccessRouting` Hook
-
-To access the routes that the user is authorized to visit, you can use the custom hook `useAccessRouting`. This hook uses the shared data provider to get the allowed routes based on the user's roles and token.
-
-```ts
-import { useShareData } from '@/provider';
-
-export const useAccessRouting = () => {
-  const { state } = useShareData();
-
-  return {
-    allowRouter: state.allowedRoutes,
-  };
-};
-
-
-
-For accessing the allowed routes, you can use the `useAccessRouting` hook.
-
-// NavigationMenu.tsx
-import React from 'react';
-import { useAccessRouting } from './access-routing'; 
-
-const NavigationMenu = () => {
+function SidebarMenu() {
   const { allowRouter } = useAccessRouting();
 
   return (
     <nav>
       <ul>
-        {allowRouter?.map((route) => (
+        {allowRouter.map(route => (
           <li key={route.path}>
-            <a href={route.path}>{route.pageTitle}</a>
+            {/* Render menu items based on allowed routes */}
+            <a href={route.path} title={route.toolTipPage || undefined}>
+              {route.icon}
+              {route.pageTitle}
+            </a>
           </li>
         ))}
       </ul>
     </nav>
   );
-};
-
-export default NavigationMenu;
-
-
+}
 ```
 
-# دسترسی به روتر (Access Router)
-
-یک لایه سبک و منعطف برای مدیریت مسیرها و کنترل دسترسی در برنامه‌های React. این ماژول به شما امکان می‌دهد مسیرهای خود را تعریف کنید و دسترسی به آن‌ها را بر اساس نقش‌های کاربری و نقش‌های گروهی محدود کنید.
-
 ---
 
-## ✨ امکانات
+### Keywords
 
-- پشتیبانی از مسیرهای عمومی و محافظت‌شده
-- کنترل دسترسی مبتنی بر نقش و نقش گروه
-- پشتیبانی از پیش‌بارگذاری صفحات
-- هدایت خودکار به صفحه ورود یا صفحه اصلی
-- پشتیبانی از صفحه NotFound
-- کاملاً سازگار با TypeScript
+react, routing, access control, protected routes, authentication, typescript
 
----
-
-## 🧩 نصب
-
-````bash
-npm i access-routing
-
-
-yarn add access-routing
-
-
-
-import type { LazyExoticComponent, FC } from 'react';
-
-export interface RouteItemType {
-  path: string;
-  pageComponents: LazyExoticComponent<FC>;
-  pageTitle: string;
-  toolTipPage: string | null;
-  icon: React.ReactNode | null;
-  preLoadingFunc?: string;
-  isPublic: boolean;
-  roles: string[];
-  groupRoles: string[];
-}
-
-
-
-
-## 🏗 Usage
-
-### 1. Wrap your app with `AccessRouterProvider` (usually in `main.tsx` or `App.tsx`)
-
-```tsx
-import AccessRouterProvider from '@/router/AccessRouterProvider';
-import routes from '@/router/routes';
-
-const userRoles = ['admin']; // Fetched from login/session
-const groupRole = ['team-leader']; // Fetched from login/session
-const token = 'user-token'; // Fetched from cookie or localStorage
-const loginUrl = '/login';
-
-<AccessRouterProvider
-  config={{
-    allRoutes: routes,
-    userRoles,
-    groupRole,
-    token,
-    loginUrl,
-  }}
->
-  <App />
-</AccessRouterProvider>
-
-
-## 🖥 App.tsx Usage
-
-In your `App.tsx`, you need to use the `RootRouter` component to handle routing and access control.
-
-Example:
-
-```tsx
-import React from 'react';
-import { RootRouter } from '@/router';
-import { useShareData } from '@/provider';
-
-const App = () => {
-  const { state } = useShareData();
-
-  return (
-    <RootRouter
-      token={state.token}
-      loginUrl="/login"
-      Loader={<div>Loading...</div>}
-      NotFoundPage={() => <div>404 Page Not Found</div>}
-      notFoundIsPublic={false}
-    />
-  );
-};
-
-export default App;
-
-
-
-### ویژگی‌های RootRouter
-
-| نام پراپس           | نوع                   | توضیحات                                                                                   | مقدار پیش‌فرض  |
-| ------------------- | --------------------- | ----------------------------------------------------------------------------------------- | -------------- |
-| `token`             | `string`              | توکن احراز هویت که برای بررسی ورود کاربر استفاده می‌شود.                                  | `''`           |
-| `loginUrl`          | `string`              | مسیر صفحه ورود. اگر کاربر غیرمجاز باشد به این صفحه هدایت می‌شود.                         | `'/login'`     |
-| `Loader`            | `React.ReactElement`  | عنصر ری‌اکتی که هنگام بارگذاری تنبل کامپوننت‌ها یا مسیرها نمایش داده می‌شود.              | `<div />`      |
-| `NotFoundPage`      | `React.ComponentType` | کامپوننتی که وقتی هیچ مسیر مطابقت ندارد (خطای ۴۰۴) نمایش داده می‌شود.                   | `undefined`    |
-| `notFoundIsPublic`  | `boolean`             | اگر `true` باشد، صفحه ۴۰۴ بدون نیاز به ورود قابل دسترسی است؛ در غیر این صورت، بدون توکن به صفحه ورود هدایت می‌شود. | `false`        |
-
----
-
-### دسترسی به روترهای مجاز با هوک `useAccessRouting`
-
-برای دسترسی به مسیرهایی که کاربر اجازه بازدید از آن‌ها را دارد، می‌توانید از هوک سفارشی `useAccessRouting` استفاده کنید. این هوک با استفاده از provider داده‌های مشترک، مسیرهای مجاز را بر اساس نقش‌ها و توکن کاربر دریافت می‌کند.
-
-```ts
-import { useShareData } from '@/provider';
-
-export const useAccessRouting = () => {
-  const { state } = useShareData();
-
-  return {
-    allowRouter: state.allowedRoutes,
-  };
-};
-````
