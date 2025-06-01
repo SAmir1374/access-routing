@@ -1,6 +1,6 @@
 import type { ReactNode, ReactElement } from 'react';
 import { createContext, useState, useContext } from 'react';
-import type { RouteItemType } from '@/types/RouterType';
+import type { RouteItemType , RootLayoutType , RouteItemWithLayout} from '@/types/RouterType';
 
 type ShareDataContextType = {
   state: ShareDataType;
@@ -8,11 +8,11 @@ type ShareDataContextType = {
 };
 
 type ShareDataType = {
-  allRoutes?: RouteItemType[];
+  allRoutes?: RouteItemType[] | RootLayoutType[];
   userRoles?: string[];
   groupRole?: string[];
   Loader?: ReactElement;
-  allowedRoutes?: RouteItemType[];
+  allowedRoutes?: RouteItemType[] | RouteItemWithLayout[];
   token?: string;
 };
 

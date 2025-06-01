@@ -1,11 +1,12 @@
-import { Suspense, useEffect, useMemo, useState } from 'react';
-import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
-import ProtectedRouter from './ProtectedRouter';
-import PageWrapper from './PageTitleWrapper';
 import { useShareData } from '@/provider';
-import type { RouteItemType } from '@/types/RouterType';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { ProtectedLayoutRoute } from './ProtectedRouter';
+import { flattenRouters } from '../utils/flattenRouters';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import PageWrapper from './PageTitleWrapper';
+import type { RootLayoutType } from '@/types/RouterType';
 
-type RootRoutingType = {
+type RootLayoutRouterType = {
   token?: string;
   Loader?: React.ReactElement;
   loginUrl?: string;
@@ -17,20 +18,22 @@ type RoutingStatus = 'checking' | 'redirectToLogin' | 'redirectToHome' | 'render
 
 const DefaultLoader = <div />;
 
-export function RootRouter({
-  token = '',
+function RootLayoutRouter({
   Loader,
-  loginUrl = '/login',
   NotFoundPage,
+  loginUrl = '/login',
   notFoundIsPublic,
-}: RootRoutingType) {
+  token = '',
+}: RootLayoutRouterType) {
   const { state } = useShareData();
   const location = useLocation();
 
+  const [routingStatus, setRoutingStatus] = useState<RoutingStatus>('checking');
+
   const allowedRoutes = useMemo(() => {
-    if (Array.isArray(state.allRoutes) && 'path' in (state.allRoutes[0] ?? {})) {
-      return ProtectedRouter(
-        state.allRoutes as RouteItemType[],
+    if (Array.isArray(state.allRoutes) && 'routers' in (state.allRoutes[0] ?? {})) {
+      return ProtectedLayoutRoute(
+        flattenRouters(state.allRoutes as RootLayoutType[]),
         state.userRoles ?? [],
         state.groupRole ?? [],
         token
@@ -38,8 +41,6 @@ export function RootRouter({
     }
     return [];
   }, [state.allRoutes, state.userRoles, state.groupRole, token]);
-
-  const [routingStatus, setRoutingStatus] = useState<RoutingStatus>('checking');
 
   useEffect(() => {
     const currentPath = location.pathname;
@@ -83,17 +84,25 @@ export function RootRouter({
   return (
     <Suspense fallback={Loader ?? DefaultLoader}>
       <Routes>
-        {allowedRoutes.map(({ path, pageComponents: Page, pageTitle }) => (
-          <Route
-            key={path}
-            path={path}
-            element={
-              <PageWrapper pageTitle={pageTitle}>
-                <Page />
-              </PageWrapper>
-            }
-          />
-        ))}
+        {allowedRoutes.map(
+          ({ path, rootPath, layout: Layout, pageComponents: Page, pageTitle }, index) => (
+            <Route
+              key={index}
+              path={rootPath}
+              element={<Layout />}
+            >
+              <Route
+                index
+                path={path}
+                element={
+                  <PageWrapper pageTitle={pageTitle}>
+                    <Page />
+                  </PageWrapper>
+                }
+              />
+            </Route>
+          )
+        )}
 
         {NotFoundPage && (
           <Route
@@ -109,3 +118,5 @@ export function RootRouter({
     </Suspense>
   );
 }
+
+export default RootLayoutRouter;
